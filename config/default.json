@@ -1,0 +1,4 @@
+{
+  "mongoURI": "mongodb+srv://jack:jack@cluster0-bgbye.mongodb.net/cluster0-shard-00-01-bgbye?retryWrites=true&w=majority",
+  "botToken": "1081422160:AAH1j-kYaa_w-aiOXIyNma1v8uqStKe4EVM"
+}
