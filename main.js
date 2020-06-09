@@ -1,8 +1,9 @@
-var moment = require("moment");
 const sendRequests = require("./submit");
 const botgram = require("botgram");
 const mongoose = require("mongoose");
 const config = require("config");
+var moment = require("moment");
+const request = require("request");
 
 const botToken = config.get("botToken");
 const bot = botgram(botToken);
@@ -42,6 +43,60 @@ function storeUserCredentials(user, stuid, stupassword) {
   });
 }
 
+function submitWithCreds(t1, t2, uname, passw, options) {
+  var dateNow = moment().utcOffset(8).format("DD MMM YYYY");
+  try {
+    sendRequests(uname, passw, "A", t1.toString());
+    sendRequests(uname, passw, "P", t2.toString());
+    if (options.telgid !== undefined) {
+      const op = {
+        method: "POST",
+        url: `https://api.telegram.org/bot${botToken}/sendMessage`,
+        form: {
+          chat_id: options.telgid,
+          text: `Submitted reading ${t1} C for AM and ${t2} C for PM,\n ${dateNow}.\n\n- Dr Trump`,
+        },
+      };
+      request(op, function (err, res) {
+        if (err) throw new Error(err);
+      });
+    } else {
+      throw new Error("Please provide options argument");
+    }
+  } catch (e) {
+    console.log(`Error encountered while sending requests v \n`);
+    console.log(e);
+  }
+}
+
+const ONE_HOUR = 3600000;
+// Keep submitting at every noon.
+function submitWithCredsLoop(t1, t2, uname, passw, options) {
+  setInterval(() => {
+    var hourNow = moment().utcOffset(8).format("H");
+    if (hourNow === "12") {
+      submitWithCreds(t1, t2, uname, passw, options);
+    }
+  }, ONE_HOUR);
+}
+// Restarts the hourly timeinterval for every registered user.
+// This is crucial because the server (on heroku) shuts down from 12am to 6pm Sg time.
+User.find()
+  .then((users) => {
+    users.forEach((user) => {
+      const { stuid, stupassword, telgid } = user;
+      const t1 = (35 + 2 * Math.random()).toFixed(1);
+      const t2 = (35 + 2 * Math.random()).toFixed(1);
+      submitWithCredsLoop(t1, t2, stuid, stupassword, { telgid });
+    });
+  })
+  .catch((err) => {
+    console.log(
+      `Error encountered while finding all users from the database. \n`
+    );
+    console.log(err);
+  });
+
 bot.command("start", function (msg, reply, next) {
   console.log("Received a /start command from", msg.from.username);
   reply.text(
@@ -57,7 +112,7 @@ bot.command("start", function (msg, reply, next) {
     "You don't have to do anything. I will notify you once I submit the reading."
   );
   reply.text(
-    "To sign in, type in your student id and password, e.g, /go nusstu\\e0203257 somepassword"
+    "To sign in, type in your student id and password, e.g, /go nusstu\\e1234567 somepassword"
   );
 });
 
@@ -72,33 +127,40 @@ bot.command("go", function (msg, reply, next) {
   const pw = creds[4];
   if (uname === undefined || pw === undefined) {
     reply.text(
-      "Please enter non-empty id and password. e.g, /go nusstu\\e0203257 somepassword"
+      "Please enter non-empty id and password. e.g, /go nusstu\\e1234567 somepassword"
     );
     return;
   }
 
-  var t1 = 0;
-  var t2 = 0;
-  storeUserCredentials(msg.user, uname, pw);
   try {
-    const timeout = setInterval(() => {
-      var hourNow = moment().utcOffset(8).format("H");
-      if (hourNow === "12") {
-        t1 = (35 + 2 * Math.random()).toFixed(1);
-        sendRequests(uname, passw, "A", t.toString());
-        t2 = (35 + 2 * Math.random()).toFixed(1);
-        sendRequests(uname, passw, "P", t.toString());
-        reply.text(
-          `Submitted reading ${t1} C for AM and ${t2} C for PM.\n\n- Dr Trump`
-        );
-      }
-    }, 3600000);
+    const t1 = (35 + 2 * Math.random()).toFixed(1);
+    const t2 = (35 + 2 * Math.random()).toFixed(1);
+    submitWithCredsLoop(t1, t2, uname, pw, { telgid: msg.user.id });
   } catch (e) {
     reply.text("There is an error submitting the reading. Try sign in again.");
     console.log(`Error submitting reading for user ${msg.user.username}`);
     return;
   }
+  // stores creds if everything is successful
+  storeUserCredentials(msg.user, uname, pw);
   reply.text(
     "Awesome! You no longer need to worry about temperature declaration. I am happy to serve you. \n\n - Dr Trump"
   );
+});
+
+// User forces on-demand submission.
+bot.command("force", function (msg, reply, next) {
+  User.findOne({ telgid: msg.user.id }, (err, user) => {
+    if (err) throw err;
+    if (!user) {
+      reply.text(
+        "Your id is not found. Have you logged in?\n e.g. \\go nusstu\\e1234567 somepassword"
+      );
+      reply.text("Note that you only need to log in once. ");
+    }
+    const { stuid, stupassword, telgid } = user;
+    const t1 = (35 + 2 * Math.random()).toFixed(1);
+    const t2 = (35 + 2 * Math.random()).toFixed(1);
+    submitWithCreds(t1, t2, stuid, stupassword, { telgid });
+  });
 });
