@@ -46,8 +46,9 @@ function storeUserCredentials(user, stuid, stupassword) {
 function submitWithCreds(t1, t2, uname, passw, options) {
   var dateNow = moment().utcOffset(8).format("DD MMM YYYY");
   try {
-    sendRequests(uname, passw, "A", t1.toString());
-    sendRequests(uname, passw, "P", t2.toString());
+    sendRequests(uname, passw, "A", t1.toString()).then(() => {
+      sendRequests(uname, passw, "P", t2.toString());
+    });
     if (options.telgid !== undefined) {
       const op = {
         method: "POST",
@@ -71,7 +72,9 @@ function submitWithCreds(t1, t2, uname, passw, options) {
 
 const ONE_HOUR = 3600000;
 // Keep submitting at every noon.
-function submitWithCredsLoop(t1, t2, uname, passw, options) {
+function submitWithCredsLoop(uname, passw, options) {
+  const t1 = (35 + 2 * Math.random()).toFixed(1);
+  const t2 = (35 + 2 * Math.random()).toFixed(1);
   setInterval(() => {
     var hourNow = moment().utcOffset(8).format("H");
     if (hourNow === "12") {
@@ -85,9 +88,7 @@ User.find()
   .then((users) => {
     users.forEach((user) => {
       const { stuid, stupassword, telgid } = user;
-      const t1 = (35 + 2 * Math.random()).toFixed(1);
-      const t2 = (35 + 2 * Math.random()).toFixed(1);
-      submitWithCredsLoop(t1, t2, stuid, stupassword, { telgid });
+      submitWithCredsLoop(stuid, stupassword, { telgid });
     });
   })
   .catch((err) => {
@@ -133,9 +134,7 @@ bot.command("go", function (msg, reply, next) {
   }
 
   try {
-    const t1 = (35 + 2 * Math.random()).toFixed(1);
-    const t2 = (35 + 2 * Math.random()).toFixed(1);
-    submitWithCredsLoop(t1, t2, uname, pw, { telgid: msg.user.id });
+    submitWithCredsLoop(uname, pw, { telgid: msg.user.id });
   } catch (e) {
     reply.text("There is an error submitting the reading. Try sign in again.");
     console.log(`Error submitting reading for user ${msg.user.username}`);
@@ -150,6 +149,7 @@ bot.command("go", function (msg, reply, next) {
 
 // User forces on-demand submission.
 bot.command("force", function (msg, reply, next) {
+  reply.text("Processing... Be patient.");
   User.findOne({ telgid: msg.user.id }, (err, user) => {
     if (err) throw err;
     if (!user) {
