@@ -1,7 +1,7 @@
 var request = require("request");
 const convertDate = require("./utils");
 
-function sendRequests(uname, passw, meridiem, temp) {
+async function sendRequests(uname, passw, meridiem, temp) {
   return new Promise((resolve, reject) => {
     try {
       var options = {
@@ -16,13 +16,15 @@ function sendRequests(uname, passw, meridiem, temp) {
         },
       };
       request = request.defaults({ jar: true });
-      request(options, function (error, res) {
+      await request(options, function (error, res) {
         if (error) throw new Error(error);
 
         // console.log(res.headers);
         // console.log(res.headers.location);
         // console.log("========END OF FIRST REQUEST==============");
-        if (!res.headers.location) return; // Wrong credentials.
+        if (!res.headers.location) {
+          throw new Error("Invalid credentials");
+        } // Wrong credentials.
         options = {
           method: "GET",
           url: res.headers.location,
@@ -44,59 +46,59 @@ function sendRequests(uname, passw, meridiem, temp) {
             url: location,
             headers: {},
           };
-          console.log(`========START OF THIRD REQUEST=================`);
-          console.log(
-            `request location: https://myaces.nus.edu.sg:443/htd/htd`
-          );
-          console.log(``);
-          console.log(`sending cookie: ${res.headers["set-cookie"][0]}`);
+          // console.log(`========START OF THIRD REQUEST=================`);
+          // console.log(
+          //   `request location: https://myaces.nus.edu.sg:443/htd/htd`
+          // );
+          // console.log(``);
+          // console.log(`sending cookie: ${res.headers["set-cookie"][0]}`);
           request(options, function (error, res) {
             if (error) throw new Error(error);
-            console.log(res.statusCode);
-            console.log("========END OF THIRD REQUEST==============");
+            // console.log(res.statusCode);
+            // console.log("========END OF THIRD REQUEST==============");
             options = {
               method: "POST",
               url: "https://myaces.nus.edu.sg/htd/htd",
               headers: {},
             };
-            console.log(`========START OF FOURTH REQUEST=================`);
-            console.log(`request location: https://myaces.nus.edu.sg/htd/htd`);
-            console.log(``);
-            console.log(`sending cookie: ${res.headers["set-cookie"][0]}`);
+            // console.log(`========START OF FOURTH REQUEST=================`);
+            // console.log(`request location: https://myaces.nus.edu.sg/htd/htd`);
+            // console.log(``);
+            // console.log(`sending cookie: ${res.headers["set-cookie"][0]}`);
             request(options, function (error, res) {
-              console.log("========END OF FOURTH REQUEST==============");
+              // console.log("========END OF FOURTH REQUEST==============");
               if (error) throw new Error(error);
-              console.log(res.headers);
+              // console.log(res.headers);
               options = {
                 method: "POST",
                 url: res.headers.location,
                 headers: {},
               };
-              console.log(`========START OF FIFTH REQUEST=================`);
-              console.log(`request location: ${res.headers.location}`);
-              console.log(``);
-              console.log(`sending cookie: ${res.headers["set-cookie"][0]}`);
+              // console.log(`========START OF FIFTH REQUEST=================`);
+              // console.log(`request location: ${res.headers.location}`);
+              // console.log(``);
+              // console.log(`sending cookie: ${res.headers["set-cookie"][0]}`);
               // Go to myaces to fill in temp reading
               request(options, function (error, res) {
-                console.log("========END OF FIFTH REQUEST==============");
+                // console.log("========END OF FIFTH REQUEST==============");
                 if (error) throw new Error(error);
-                console.log(res.headers);
+                // console.log(res.headers);
                 options = {
                   method: "POST",
                   url: res.headers.location,
                   headers: {},
                 };
                 var myacesCookie = res.headers["set-cookie"][0];
-                console.log(`========START OF SIXTH REQUEST=================`);
-                console.log(`request location: ${res.headers.location}`);
-                console.log(``);
-                console.log(`sending cookie: ${res.headers["set-cookie"][0]}`);
+                // console.log(`========START OF SIXTH REQUEST=================`);
+                // console.log(`request location: ${res.headers.location}`);
+                // console.log(``);
+                // console.log(`sending cookie: ${res.headers["set-cookie"][0]}`);
                 // Submit temp reading
                 request(options, function (error, res) {
-                  console.log(res.headers);
-                  console.log("========END OF SIXTH REQUEST==============");
-                  console.log(res.headers.date);
-                  console.log(convertDate(res.headers.date));
+                  // console.log(res.headers);
+                  // console.log("========END OF SIXTH REQUEST==============");
+                  // console.log(res.headers.date);
+                  // console.log(convertDate(res.headers.date));
                   if (error) throw new Error(error);
                   options = {
                     method: "POST",
@@ -113,16 +115,16 @@ function sendRequests(uname, passw, meridiem, temp) {
                     },
                     date: "Sun, 09 Jun 2020 17:44:19 GMT",
                   };
-                  console.log(
-                    `========START OF SEVENTH REQUEST=================`
-                  );
-                  console.log(
-                    `request location: https://myaces.nus.edu.sg/htd/htd`
-                  );
-                  console.log(``);
-                  console.log(`sending cookie: ${myacesCookie}`);
+                  // console.log(
+                  //   `========START OF SEVENTH REQUEST=================`
+                  // );
+                  // console.log(
+                  //   `request location: https://myaces.nus.edu.sg/htd/htd`
+                  // );
+                  // console.log(``);
+                  // console.log(`sending cookie: ${myacesCookie}`);
                   request(options, function (error, res) {
-                    console.log("========END OF SEVENTH REQUEST==============");
+                    // console.log("========END OF SEVENTH REQUEST==============");
                     if (error) throw new Error(error);
                     resolve();
                   });

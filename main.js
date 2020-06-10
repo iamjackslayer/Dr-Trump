@@ -43,11 +43,11 @@ function storeUserCredentials(user, stuid, stupassword) {
   });
 }
 
-function submitWithCreds(t1, t2, uname, passw, options) {
+async function submitWithCreds(t1, t2, uname, passw, options) {
   var dateNow = moment().utcOffset(8).format("DD MMM YYYY");
   try {
-    sendRequests(uname, passw, "A", t1.toString()).then(() => {
-      sendRequests(uname, passw, "P", t2.toString());
+    await sendRequests(uname, passw, "A", t1.toString()).then(async () => {
+      await sendRequests(uname, passw, "P", t2.toString());
     });
     if (options.telgid !== undefined) {
       const op = {
@@ -65,20 +65,19 @@ function submitWithCreds(t1, t2, uname, passw, options) {
       throw new Error("Please provide options argument");
     }
   } catch (e) {
-    console.log(`Error encountered while sending requests v \n`);
-    console.log(e);
+    throw new Error(`Error encountered while sending requests v \n`);
   }
 }
 
 const ONE_HOUR = 3600000;
 // Keep submitting at every noon.
-function submitWithCredsLoop(uname, passw, options) {
+async function submitWithCredsLoop(uname, passw, options) {
   const t1 = (35 + 2 * Math.random()).toFixed(1);
   const t2 = (35 + 2 * Math.random()).toFixed(1);
   setInterval(() => {
     var hourNow = moment().utcOffset(8).format("H");
     if (hourNow === "12") {
-      submitWithCreds(t1, t2, uname, passw, options);
+      await submitWithCreds(t1, t2, uname, passw, options);
     }
   }, ONE_HOUR);
 }
@@ -133,17 +132,19 @@ bot.command("go", function (msg, reply, next) {
     return;
   }
 
-  try {
-    submitWithCredsLoop(uname, pw, { telgid: msg.user.id });
-  } catch (e) {
+  submitWithCredsLoop(uname, pw, { telgid: msg.user.id }).catch(err => {
+
     reply.text("There is an error submitting the reading. Try sign in again.");
     console.log(`Error submitting reading for user ${msg.user.username}`);
     return;
-  }
-  // stores creds if everything is successful
+  })
+  // May store wrong credentials
   storeUserCredentials(msg.user, uname, pw);
   reply.text(
     "Awesome! You no longer need to worry about temperature declaration. I am happy to serve you. \n\n - Dr Trump"
+  );
+  reply.text(
+    " If you typed wrongly, simply retype /go nusstu\\e1234567 somepassword."
   );
 });
 
