@@ -77,7 +77,9 @@ async function submitWithCredsLoop(uname, passw, options) {
   setInterval(() => {
     var hourNow = moment().utcOffset(8).format("H");
     if (hourNow === "12") {
-      await submitWithCreds(t1, t2, uname, passw, options);
+      submitWithCreds(t1, t2, uname, passw, options).catch((e) => {
+        console.log("Error submitting with credentials: ", e);
+      });
     }
   }, ONE_HOUR);
 }
@@ -88,6 +90,7 @@ User.find()
     users.forEach((user) => {
       const { stuid, stupassword, telgid } = user;
       submitWithCredsLoop(stuid, stupassword, { telgid });
+      console.log(`Submitted for ${user.telgusername}`);
     });
   })
   .catch((err) => {
@@ -132,12 +135,7 @@ bot.command("go", function (msg, reply, next) {
     return;
   }
 
-  submitWithCredsLoop(uname, pw, { telgid: msg.user.id }).catch(err => {
-
-    reply.text("There is an error submitting the reading. Try sign in again.");
-    console.log(`Error submitting reading for user ${msg.user.username}`);
-    return;
-  })
+  submitWithCredsLoop(uname, pw, { telgid: msg.user.id });
   // May store wrong credentials
   storeUserCredentials(msg.user, uname, pw);
   reply.text(
@@ -162,6 +160,11 @@ bot.command("force", function (msg, reply, next) {
     const { stuid, stupassword, telgid } = user;
     const t1 = (35 + 2 * Math.random()).toFixed(1);
     const t2 = (35 + 2 * Math.random()).toFixed(1);
-    submitWithCreds(t1, t2, stuid, stupassword, { telgid });
+    submitWithCreds(t1, t2, stuid, stupassword, { telgid }).catch((e) => {
+      console.log("Error submitting with credentials: ", e);
+      reply.text(
+        "Bad credentials. Please retype \\go nusstu\\e1234567 somepassword"
+      );
+    });
   });
 });
